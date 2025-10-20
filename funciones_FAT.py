@@ -1,5 +1,9 @@
 import json
 import os 
+import hashlib
+
+def encriptar_clave(clave):
+    return hashlib.sha256(clave.encode("utf-8")).hexdigest()
 
 class Usuario:
     def __init__(self,nombre, clave ,rol):
@@ -11,7 +15,7 @@ class Usuario:
         return self.__clave
     
     def verificar_contrasena(self, intento):
-        return self.__clave == intento
+        return self.__clave == encriptar_clave(intento)
     
     def convertir_a_diccionario(self):
         return {
@@ -29,15 +33,24 @@ class Gestion_Usuarios:
         "invitado": ["leer"]
         }
 
-
-    def crear_usuario(self,nombre, clave, rol):
-        nuevo_usuario = Usuario(nombre,clave,rol)
+    def crear_usuario(self, nombre, clave, rol):
+        clave_encriptada = encriptar_clave(clave)
+        nuevo_usuario = Usuario(nombre, clave_encriptada, rol)
         self.usuarios.append(nuevo_usuario)
 
-        datos_para_serializar = [u.convertir_a_diccionario() for u in self.usuarios]
+        usuarios_existentes = []
+        if os.path.exists("usuarios.json"):
+            with open("usuarios.json", "r", encoding="utf-8") as archivo:
+                try:
+                    usuarios_existentes = json.load(archivo)
+                except json.JSONDecodeError:
+                    usuarios_existentes = []
 
-        with open("usuarios.json","w",encoding="utf-8") as archivo:
-            json.dump(datos_para_serializar, archivo, indent=4, ensure_ascii=False)
+        usuarios_existentes.append(nuevo_usuario.convertir_a_diccionario())
+
+        with open("usuarios.json", "w", encoding="utf-8") as archivo:
+            json.dump(usuarios_existentes, archivo, indent=4, ensure_ascii=False)
+
 
     def cargar_usuarios(self):
         if os.path.exists("usuarios.json"):

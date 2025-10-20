@@ -2,7 +2,7 @@ from funciones_FAT import Usuario, Gestion_Usuarios
 import tkinter as tk
 from tkinter import messagebox
 import os
-
+from PIL import Image, ImageTk
 
 # Tema proporcionado
 tema = {
@@ -19,11 +19,12 @@ class Aplicacion:
     def __init__(self, root):
         self.root = root
         self.root.title("Aplicación con Login")
-        self.root.geometry("800x600")
+        self.root.geometry("1280x720")
         self.root.configure(bg=tema["fondo_principal"])
         
         self.gestion = Gestion_Usuarios()
-        self.gestion.crear_usuario("usuario1","123","admin")
+        self.gestion.crear_usuario("admin","2","admin")
+        
         
 
         self.usuario_actual = None
@@ -55,7 +56,8 @@ class Aplicacion:
     def intentar_login(self):
         nombre = self.entry_nombre.get()
         clave = self.entry_clave.get()
-        
+        self.gestion.cargar_usuarios()
+
         if self.gestion.autenticar(nombre, clave):
             self.usuario_actual = next(u for u in self.gestion.usuarios if u.nombre == nombre)
             messagebox.showinfo("Éxito", f"Bienvenido, {self.usuario_actual.nombre}!")
@@ -68,27 +70,37 @@ class Aplicacion:
         self.login_frame.destroy()
         
         self.crear_frames()
-        
 
         self.mostrar_inicio()
     
     def crear_frames(self):
+        self.icono_abrir = ImageTk.PhotoImage(Image.open("iconos/_abrir.png").resize((25, 25)))
+        self.icono_crear = ImageTk.PhotoImage(Image.open("iconos/crear.png").resize((25, 25)))
+        self.icono_crear_usuario = ImageTk.PhotoImage(Image.open("iconos\crear_usuario.png").resize((25, 25)))
+        self.icono_papelera = ImageTk.PhotoImage(Image.open("iconos/papelera.png").resize((25, 25)))
+        self.icono_salir = ImageTk.PhotoImage(Image.open("iconos/salir.png").resize((25, 25)))
 
-        self.frame_superior = tk.Frame(self.root, bg=tema["fondo_menu"], height=50)
+
+        opciones_boton = {"width": 180, "font": tema["fuente"],
+                    "bg": tema["fondo_menu"], "fg": "white",
+                    "activebackground": "#fc5e5b", "relief": "flat", "compound": "left"}
+
+
+        self.frame_superior = tk.Frame(self.root, bg=tema["seleccion"], height=10)
         self.frame_superior.pack(side=tk.TOP, fill=tk.X)
-        
 
-        tk.Label(self.frame_superior, text="Aplicación", bg=tema["fondo_menu"], fg=tema["texto"], font=tema["fuente"]).pack(pady=10)
-        
-
-        self.frame_izquierdo = tk.Frame(self.root, bg=tema["fondo_menu"], width=200)
+        self.frame_izquierdo = tk.Frame(self.root, bg=tema["fondo_menu"], width=250)
         self.frame_izquierdo.pack(side=tk.LEFT, fill=tk.Y)
 
-        tk.Button(self.frame_izquierdo, text="Inicio", bg=tema["fondo_menu"], fg=tema["texto"], font=tema["fuente"], command=self.mostrar_inicio).pack(pady=5, padx=10, fill=tk.X)
-        tk.Button(self.frame_izquierdo, text="Perfil", bg=tema["fondo_menu"], fg=tema["texto"], font=tema["fuente"], command=self.mostrar_perfil).pack(pady=5, padx=10, fill=tk.X)
-        tk.Button(self.frame_izquierdo, text="Configuración", bg=tema["fondo_menu"], fg=tema["texto"], font=tema["fuente"], command=self.mostrar_config).pack(pady=5, padx=10, fill=tk.X)
-        tk.Button(self.frame_izquierdo, text="Salir", bg=tema["fondo_menu"], fg=tema["texto"], font=tema["fuente"], command=self.salir).pack(pady=5, padx=10, fill=tk.X)
+        tk.Label(self.frame_izquierdo, text="Acciones", font=(tema["fuente"][0], 14, 'bold'),
+                 fg=tema["texto"], bg=tema["fondo_menu"]).pack(pady=5)
         
+
+        tk.Button(self.frame_izquierdo, text="  Abrir archivo ", command=self.mostrar_config, **opciones_boton, image=self.icono_abrir).pack(pady=25)
+        tk.Button(self.frame_izquierdo, text="  Crear archivo", command=self.mostrar_config, **opciones_boton, image=self.icono_crear).pack(pady=25)
+        tk.Button(self.frame_izquierdo, text="  Crear usuario", command=self.mostrar_config, **opciones_boton, image=self.icono_crear_usuario).pack(pady=25)
+        tk.Button(self.frame_izquierdo, text="    Papelera       ", command=self.mostrar_config, **opciones_boton, image=self.icono_papelera).pack(pady=25)
+        tk.Button(self.frame_izquierdo, text="  Cerrar sesión  ", command=self.salir,**opciones_boton, image=self.icono_salir).pack(pady=25)
 
         self.frame_central = tk.Frame(self.root, bg=tema["fondo_principal"])
         self.frame_central.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
@@ -97,13 +109,7 @@ class Aplicacion:
         for widget in self.frame_central.winfo_children():
             widget.destroy()
         
-        tk.Label(self.frame_central, text=f"Bienvenido a Inicio, {self.usuario_actual.nombre}!", bg=tema["fondo_principal"], fg=tema["texto2"], font=tema["fuente"]).pack(expand=True)
-    
-    def mostrar_perfil(self):
-        for widget in self.frame_central.winfo_children():
-            widget.destroy()
-        
-        tk.Label(self.frame_central, text=f"Perfil de {self.usuario_actual.nombre}\nRol: {self.usuario_actual.permiso}", bg=tema["fondo_principal"], fg=tema["texto2"], font=tema["fuente"]).pack(expand=True)
+        tk.Label(self.frame_central, text=f"Lista de archivos:", bg=tema["fondo_principal"], fg=tema["texto2"], font=tema["fuente"]).pack(expand=True)
     
     def mostrar_config(self):
         for widget in self.frame_central.winfo_children():
