@@ -131,9 +131,5 @@ class GestionFAT:
                     self.archivos_logicos.append(archivo_logico)
 
 
-gestion = GestionFAT()
-gestion.cargar_archivos()
-gestion.crear_archivo("prueba.txt")
-
 
 
