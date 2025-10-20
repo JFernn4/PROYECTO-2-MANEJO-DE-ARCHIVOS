@@ -1,0 +1,15 @@
+[
+    {
+        "nombre": "prueba.txt",
+        "ruta": "archivos/prueba.txt",
+        "estado": false,
+        "caracteres": 0,
+        "fecha de creacion": "2025-10-19T20:03:06.444293",
+        "fecha de modifiacion": "2025-10-19T20:03:06.444310",
+        "fecha de elminiacion": "",
+        "permisos": [
+            "lectura",
+            "escritura"
+        ]
+    }
+]
