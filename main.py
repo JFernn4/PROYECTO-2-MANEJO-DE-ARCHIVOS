@@ -83,7 +83,10 @@ class Aplicacion:
         opciones_boton = {"width": 180, "font": tema["fuente"],
                     "bg": tema["fondo_menu"], "fg": "white",
                     "activebackground": "#fc5e5b", "relief": "flat", "compound": "left"}
-
+        
+        opciones_boton2 = {"width": 25, "font": tema["fuente"],
+                    "bg": tema["fondo_menu"], "fg": "white",
+                    "activebackground": "#d94e4c", "relief": "flat"}
 
         self.frame_superior = tk.Frame(self.root, bg=tema["seleccion"], height=10)
         self.frame_superior.pack(side=tk.TOP, fill=tk.X)
@@ -94,6 +97,16 @@ class Aplicacion:
         tk.Label(self.frame_izquierdo, text="Acciones", font=(tema["fuente"][0], 14),
                  fg=tema["texto"], bg=tema["fondo_menu"]).pack(pady=15)
         
+        self.frame_central = tk.Frame(self.root, bg=tema["fondo_principal"])
+        self.frame_central.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+        
+        self.frame_superior_central = tk.Frame(self.frame_central, bg=tema["fondo_principal"], height=30)
+        self.frame_superior_central.pack(side=tk.TOP, fill=tk.X)
+        tk.Label(self.frame_superior_central, text="Lista de archivos", font=(tema["fuente"][0], 14),
+                 fg=tema["texto2"], bg=tema["fondo_principal"]).pack(side=tk.LEFT,pady=15,padx=30)
+
+        
 
         tk.Button(self.frame_izquierdo, text="  Abrir archivo ", command=None, **opciones_boton, image=self.icono_abrir).pack(pady=25)
         tk.Button(self.frame_izquierdo, text="  Crear archivo", command=None, **opciones_boton, image=self.icono_crear).pack(pady=25)
@@ -101,13 +114,15 @@ class Aplicacion:
         tk.Button(self.frame_izquierdo, text="    Papelera       ", command=None, **opciones_boton, image=self.icono_papelera).pack(pady=25)
         tk.Button(self.frame_izquierdo, text="  Cerrar sesión  ", command=self.salir,**opciones_boton, image=self.icono_salir).pack(pady=25)
 
-        self.frame_central = tk.Frame(self.root, bg=tema["fondo_principal"])
-        self.frame_central.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        self.lista_resultados = tk.Listbox(self.frame_central, font=tema["fuente"],
+                                         selectbackground=tema["seleccion"],
+                                         bg=tema["fondo_principal"], fg="black")
+        self.lista_resultados.pack(fill='both', expand=True)
 
-        self.frame_superior_central = tk.Frame(self.frame_central, bg=tema["fondo_principal"], height=30)
-        self.frame_superior_central.pack(side=tk.TOP, fill=tk.X)
-        tk.Label(self.frame_superior_central, text="    Lista de archivos", font=(tema["fuente"][0], 14),
-                 fg=tema["texto2"], bg=tema["fondo_principal"]).pack(side=tk.LEFT,pady=15,padx=5)
+        self.pie = tk.Frame(self.frame_central, bg=tema["fondo_principal"])
+        self.pie.pack(fill='x')
+        tk.Button(self.pie, text="Modificar seleccionado", command=None, **opciones_boton2).pack(side='left', padx=30, pady=15)
+        tk.Button(self.pie, text="Eliminar seleccionado", command=None, **opciones_boton2).pack(side='left', padx=30, pady=15)
 
 
     def salir(self):
