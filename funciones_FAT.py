@@ -24,17 +24,31 @@ class Usuario:
             "clave": self.__clave,
             "rol": self.rol
         }
+    def validar_permiso(self, accion):
+        permisos = {
+            "admin": ["leer", "escribir", "eliminar", "crear usuario"],
+            "usuario": ["leer", "escribir"],
+            "invitado": ["leer"]
+        }
+        permisos_usuario = permisos.get(self.rol, [])
+
+        if accion in permisos_usuario:
+            return True
+        else:
+            return False
+
+
+
     
 class Gestion_Usuarios:
     def __init__(self):
         self.usuarios = []
-        self.permisos = {
-        "admin": ["leer","escribir","eliminar","crear usuario"],
-        "usuario": ["leer","escribir"],
-        "invitado": ["leer"]
-        }
 
-    def crear_usuario(self, nombre, clave, rol):
+    def crear_usuario(self, usuario_actual, nombre, clave, rol):
+        if not usuario_actual.validar_permiso("crear usuario"):
+            print(f"El usuario '{usuario_actual.nombre}' no tiene permiso para crear usuarios.")
+            return
+
         clave_encriptada = encriptar_clave(clave)
         nuevo_usuario = Usuario(nombre, clave_encriptada, rol)
         self.usuarios.append(nuevo_usuario)
@@ -89,24 +103,75 @@ class ArchivoLogico:
             "fecha de elminiacion": self.fecha_eliminacion,
             "permisos": self.permisos
         }
+class ArchivoFisico:
+    def __init__(self, datos, siguiente, eof):
+        self.datos = datos
+        self.siguiente = siguiente
+        self.eof = eof
+    def convertir_a_diccionario(self):
+        return {
+            "datos": self.datos,
+            "siguiente": self.siguiente,
+            "eof": self.eof
+        }
+    
+
 
 class GestionFAT:
     def __init__(self):
         self.archivos_logicos = []
+        os.makedirs("bloques", exist_ok=True) 
 
-    def crear_archivo(self, nombre):
-        if any(a.nombre == nombre for a in self.archivos_logicos):
-            print(f"El archivo '{nombre}' ya existe.")
+    def crear_bloques_fisicos(self, nombre_archivo, contenido):
+        # Divide el contenido en partes de máximo 20 caracteres
+        bloques = [contenido[i:i+20] for i in range(0, len(contenido), 20)]
+        rutas = []
+
+        # bloques físicos
+        for i, datos in enumerate(bloques):
+            nombre_bloque = f"bloques/{nombre_archivo}_bloque_{i+1}.json"
+
+            if i < len(bloques) - 1:
+                siguiente = f"bloques/{nombre_archivo}_bloque_{i+2}.json"
+            else:
+                siguiente = None  
+
+            # eof indica si es el último bloque del archivo
+            if i == len(bloques) - 1:
+                eof = True
+            else:
+                eof = False
+
+            bloque = ArchivoFisico(datos, siguiente, eof)
+
+            # Guardar el bloque en un archivo JSON
+            with open(nombre_bloque, "w", encoding="utf-8") as f:
+                json.dump(bloque.convertir_a_diccionario(), f, indent=4, ensure_ascii=False)
+
+            rutas.append(nombre_bloque)
+
+        # Retorna el bloque inicial
+        if len(rutas) > 0:
+            return rutas[0]
+        else:
+            return None
+
+    def crear_archivo(self, usuario_actual, nombre, contenido=""):
+        if not usuario_actual.validar_permiso("escribir"):
+            print(f"El usuario '{usuario_actual.nombre}' no tiene permiso para crear archivos.")
             return
+        
+        for a in self.archivos_logicos:
+            if a.nombre == nombre:
+                return
 
-        ruta = "archivos/" + nombre
+        ruta_inicial = self.crear_bloques_fisicos(nombre, contenido)
         estado_papelera = False
-        cantidad_caracteres = 0
-        fecha_creacion = datetime.now().isoformat()
-        fecha_modificacion = datetime.now().isoformat()
-        fecha_eliminacion = ""
+        cantidad_caracteres = len(contenido)
+        fecha_actual = datetime.now().isoformat()
         permisos = ["lectura", "escritura"]
-        nuevo_archivo_logico = ArchivoLogico(nombre, ruta, estado_papelera, cantidad_caracteres, fecha_creacion, fecha_modificacion, fecha_eliminacion, permisos)
+
+        nuevo_archivo_logico = ArchivoLogico(nombre, ruta_inicial, estado_papelera, cantidad_caracteres,fecha_actual, fecha_actual, "", permisos)
         self.archivos_logicos.append(nuevo_archivo_logico)
 
         archivos_existentes = []
@@ -121,15 +186,78 @@ class GestionFAT:
 
         with open("tablas_FAT.json", "w", encoding="utf-8") as archivo:
             json.dump(archivos_existentes, archivo, indent=4, ensure_ascii=False)
-    
+
+    def leer_archivo(self, usuario_actual, nombre):
+        if not usuario_actual.validar_permiso("leer"):
+            print(f"El usuario '{usuario_actual.nombre}' no tiene permiso para leer archivos.")
+            return None
+        archivo = None
+        for a in self.archivos_logicos:
+            if a.nombre == nombre:
+                archivo = a
+                break
+
+        if archivo is None:
+            return  # No existe
+
+        contenido_total = ""
+        ruta = archivo.ruta
+
+        # Lee todos los bloques encadenados
+        while ruta:
+            with open(ruta, "r", encoding="utf-8") as f:
+                bloque = json.load(f)
+                contenido_total += bloque["datos"]
+                ruta = bloque["siguiente"]
+
+        return contenido_total
+
+    def modificar_archivo(self, usuario_actual, nombre, nuevo_contenido):
+        if not usuario_actual.validar_permiso("escribir"):
+            print(f"El usuario '{usuario_actual.nombre}' no tiene permiso para modificar archivos.")
+            return
+        
+        archivo = None
+        for a in self.archivos_logicos:
+            if a.nombre == nombre:
+                archivo = a
+                break
+
+        if archivo is None:
+            return  
+
+        ruta = archivo.ruta
+        while ruta:
+            if os.path.exists(ruta):
+                with open(ruta, "r", encoding="utf-8") as f:
+                    bloque = json.load(f)
+                    ruta_siguiente = bloque["siguiente"]
+                os.remove(ruta)
+                ruta = ruta_siguiente
+            else:
+                ruta = None
+
+        nueva_ruta = self.crear_bloques_fisicos(nombre, nuevo_contenido)
+        archivo.ruta = nueva_ruta
+        archivo.cantidad_caracteres = len(nuevo_contenido)
+        archivo.fecha_modificacion = datetime.now().isoformat()
+
+        self._guardar_tabla_fat()
+
+    def _guardar_tabla_fat(self):
+        datos = [a.convertir_a_diccionario() for a in self.archivos_logicos]
+        with open("tablas_FAT.json", "w", encoding="utf-8") as archivo:
+            json.dump(datos, archivo, indent=4, ensure_ascii=False)
+
     def cargar_archivos(self):
         if os.path.exists("tablas_FAT.json"):
             with open("tablas_FAT.json", "r", encoding="utf-8") as archivo:
                 datos = json.load(archivo)
                 for d in datos:
-                    archivo_logico = ArchivoLogico(d["nombre"], d["ruta"], d["estado"],d["caracteres"],d["fecha de creacion"],d["fecha de modificacion"],d["fecha de eliminacion"], d["permisos"])
+                    archivo_logico = ArchivoLogico(
+                        d["nombre"], d["ruta"], d["estado"], d["caracteres"],
+                        d["fecha de creacion"], d["fecha de modificacion"],
+                        d["fecha de eliminacion"], d["permisos"]
+                    )
                     self.archivos_logicos.append(archivo_logico)
-
-
-
 

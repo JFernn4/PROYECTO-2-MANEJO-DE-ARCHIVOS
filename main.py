@@ -23,11 +23,10 @@ class Aplicacion:
         self.root.configure(bg=tema["fondo_principal"])
         
         self.gestion = Gestion_Usuarios()
-        self.gestion.crear_usuario("admin","2","admin")
+        admin = Usuario("admin","123","admin")
+        self.gestion.crear_usuario(admin,"admin","123","admin")
         
-        
-
-        self.usuario_actual = None
+        self.usuario_actual = admin
         
 
         self.mostrar_login()
@@ -92,31 +91,25 @@ class Aplicacion:
         self.frame_izquierdo = tk.Frame(self.root, bg=tema["fondo_menu"], width=250)
         self.frame_izquierdo.pack(side=tk.LEFT, fill=tk.Y)
 
-        tk.Label(self.frame_izquierdo, text="Acciones", font=(tema["fuente"][0], 14, 'bold'),
-                 fg=tema["texto"], bg=tema["fondo_menu"]).pack(pady=5)
+        tk.Label(self.frame_izquierdo, text="Acciones", font=(tema["fuente"][0], 14),
+                 fg=tema["texto"], bg=tema["fondo_menu"]).pack(pady=15)
         
 
-        tk.Button(self.frame_izquierdo, text="  Abrir archivo ", command=self.mostrar_config, **opciones_boton, image=self.icono_abrir).pack(pady=25)
-        tk.Button(self.frame_izquierdo, text="  Crear archivo", command=self.mostrar_config, **opciones_boton, image=self.icono_crear).pack(pady=25)
-        tk.Button(self.frame_izquierdo, text="  Crear usuario", command=self.mostrar_config, **opciones_boton, image=self.icono_crear_usuario).pack(pady=25)
-        tk.Button(self.frame_izquierdo, text="    Papelera       ", command=self.mostrar_config, **opciones_boton, image=self.icono_papelera).pack(pady=25)
+        tk.Button(self.frame_izquierdo, text="  Abrir archivo ", command=None, **opciones_boton, image=self.icono_abrir).pack(pady=25)
+        tk.Button(self.frame_izquierdo, text="  Crear archivo", command=None, **opciones_boton, image=self.icono_crear).pack(pady=25)
+        tk.Button(self.frame_izquierdo, text="  Crear usuario", command=None, **opciones_boton, image=self.icono_crear_usuario).pack(pady=25)
+        tk.Button(self.frame_izquierdo, text="    Papelera       ", command=None, **opciones_boton, image=self.icono_papelera).pack(pady=25)
         tk.Button(self.frame_izquierdo, text="  Cerrar sesión  ", command=self.salir,**opciones_boton, image=self.icono_salir).pack(pady=25)
 
         self.frame_central = tk.Frame(self.root, bg=tema["fondo_principal"])
         self.frame_central.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-    
-    def mostrar_inicio(self):
-        for widget in self.frame_central.winfo_children():
-            widget.destroy()
-        
-        tk.Label(self.frame_central, text=f"Lista de archivos:", bg=tema["fondo_principal"], fg=tema["texto2"], font=tema["fuente"]).pack(expand=True)
-    
-    def mostrar_config(self):
-        for widget in self.frame_central.winfo_children():
-            widget.destroy()
-        
-        tk.Label(self.frame_central, text="Configuración", bg=tema["fondo_principal"], fg=tema["texto2"], font=tema["fuente"]).pack(expand=True)
-    
+
+        self.frame_superior_central = tk.Frame(self.frame_central, bg=tema["fondo_principal"], height=30)
+        self.frame_superior_central.pack(side=tk.TOP, fill=tk.X)
+        tk.Label(self.frame_superior_central, text="    Lista de archivos", font=(tema["fuente"][0], 14),
+                 fg=tema["texto2"], bg=tema["fondo_principal"]).pack(side=tk.LEFT,pady=15,padx=5)
+
+
     def salir(self):
         self.usuario_actual = None
         self.mostrar_login()
