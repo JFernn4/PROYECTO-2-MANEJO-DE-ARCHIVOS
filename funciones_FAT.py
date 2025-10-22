@@ -1,5 +1,6 @@
 import json
 import os 
+import shutil
 import hashlib
 from datetime import datetime
 
@@ -68,6 +69,7 @@ class Gestion_Usuarios:
 
 
     def cargar_usuarios(self):
+        self.usuarios = []  # Limpiar lista antes de cargar
         if os.path.exists("usuarios.json"):
             with open("usuarios.json", "r", encoding="utf-8") as archivo:
                 datos = json.load(archivo)
@@ -98,11 +100,23 @@ class ArchivoLogico:
             "ruta": self.ruta,
             "estado": self.estado_papelera,
             "caracteres": self.cantidad_caracteres,
-            "fecha de creacion": self.fecha_creacion,
-            "fecha de modifiacion": self.fecha_modificacion,
-            "fecha de elminiacion": self.fecha_eliminacion,
+            "fecha_creacion": self.fecha_creacion,
+            "fecha_modificacion": self.fecha_modificacion,
+            "fecha_eliminacion": self.fecha_eliminacion,
             "permisos": self.permisos
         }
+    def mostrar_metadatos(self):
+        return {
+            "Nombre": self.nombre,
+            "Ruta": self.ruta,
+            "En papelera": "Sí" if self.estado_papelera else "No",
+            "Tamaño (caracteres)": self.cantidad_caracteres,
+            "Fecha de creación": self.fecha_creacion,
+            "Fecha de modificación": self.fecha_modificacion,
+            "Fecha de eliminación": self.fecha_eliminacion if self.fecha_eliminacion else "N/A",
+            "Permisos": ", ".join(self.permisos)
+        }
+    
 class ArchivoFisico:
     def __init__(self, datos, siguiente, eof):
         self.datos = datos
@@ -120,7 +134,11 @@ class ArchivoFisico:
 class GestionFAT:
     def __init__(self):
         self.archivos_logicos = []
+        self.papelera = []
         os.makedirs("bloques", exist_ok=True) 
+        os.makedirs("papelera_bloques", exist_ok=True) 
+        self.migrar_archivo_json()  
+        self.cargar_archivos()
 
     def crear_bloques_fisicos(self, nombre_archivo, contenido):
         # Divide el contenido en partes de máximo 20 caracteres
@@ -162,7 +180,8 @@ class GestionFAT:
             return
         
         for a in self.archivos_logicos:
-            if a.nombre == nombre:
+            if a.nombre == nombre and not a.estado_papelera:
+                print(f"Ya existe un archivo con el nombre '{nombre}'")
                 return
 
         ruta_inicial = self.crear_bloques_fisicos(nombre, contenido)
@@ -171,7 +190,8 @@ class GestionFAT:
         fecha_actual = datetime.now().isoformat()
         permisos = ["lectura", "escritura"]
 
-        nuevo_archivo_logico = ArchivoLogico(nombre, ruta_inicial, estado_papelera, cantidad_caracteres,fecha_actual, fecha_actual, "", permisos)
+        nuevo_archivo_logico = ArchivoLogico(nombre, ruta_inicial, estado_papelera, cantidad_caracteres,
+                                            fecha_actual, fecha_actual, "", permisos)
         self.archivos_logicos.append(nuevo_archivo_logico)
 
         archivos_existentes = []
@@ -245,19 +265,188 @@ class GestionFAT:
         self._guardar_tabla_fat()
 
     def _guardar_tabla_fat(self):
-        datos = [a.convertir_a_diccionario() for a in self.archivos_logicos]
+        # Guardar solo archivos que no están en la papelera
+        archivos_activos = [a for a in self.archivos_logicos if not a.estado_papelera]
+        datos = [a.convertir_a_diccionario() for a in archivos_activos]
         with open("tablas_FAT.json", "w", encoding="utf-8") as archivo:
             json.dump(datos, archivo, indent=4, ensure_ascii=False)
 
     def cargar_archivos(self):
+        self.archivos_logicos = []  # Limpiar lista antes de cargar
+        if os.path.exists("tablas_FAT.json"):
+            with open("tablas_FAT.json", "r", encoding="utf-8") as archivo:
+                try:
+                    datos = json.load(archivo)
+                    for d in datos:
+                        # SOLO cargar archivos que NO están en papelera
+                        if not d.get("estado", False):  # estado_papelera = False
+                            archivo_logico = ArchivoLogico(
+                                d["nombre"], d["ruta"], d["estado"], d["caracteres"],
+                                d["fecha_creacion"], d["fecha_modificacion"],
+                                d["fecha_eliminacion"], d["permisos"]
+                            )
+                            self.archivos_logicos.append(archivo_logico)
+                except json.JSONDecodeError:
+                    pass  # Si el archivo está vacío
+        
+        # También cargar la papelera desde papelera.json
+        self.cargar_papelera_desde_json()
+
+    def cargar_papelera_desde_json(self):
+        self.papelera = []  # Limpiar papelera actual
+        if os.path.exists("papelera.json"):
+            with open("papelera.json", "r", encoding="utf-8") as archivo:
+                try:
+                    datos = json.load(archivo)
+                    for d in datos:
+                        archivo_logico = ArchivoLogico(
+                            d["nombre"], d["ruta"], d["estado"], d["caracteres"],
+                            d["fecha_creacion"], d["fecha_modificacion"],
+                            d["fecha_eliminacion"], d["permisos"]
+                        )
+                        self.papelera.append(archivo_logico)
+                except json.JSONDecodeError:
+                    pass  # Si el archivo está vacío o corrupto
+
+    def eliminar_archivo(self, usuario_actual, nombre):
+        if not usuario_actual.validar_permiso("eliminar"):
+            print(f"El usuario '{usuario_actual.nombre}' no tiene permiso para eliminar archivos.")
+            return
+        
+        archivo_a_eliminar = None
+        for a in self.archivos_logicos:
+            if a.nombre == nombre:
+                archivo_a_eliminar = a
+                break
+
+        if archivo_a_eliminar is None:
+            print(f"No se encontró el archivo '{nombre}'.")
+            return
+
+        ruta = archivo_a_eliminar.ruta
+        while ruta:
+            if os.path.exists(ruta):
+                nombre_bloque = os.path.basename(ruta)
+                nueva_ruta = os.path.join("papelera_bloques", nombre_bloque)
+                shutil.move(ruta, nueva_ruta)  # mueve el bloque
+                
+                # ACTUALIZAR: Cambiar la ruta en el objeto archivo para que apunte a papelera_bloques
+                if ruta == archivo_a_eliminar.ruta:  # Si es el primer bloque
+                    archivo_a_eliminar.ruta = nueva_ruta
+                    ruta = nueva_ruta
+                
+                with open(nueva_ruta, "r", encoding="utf-8") as f:
+                    bloque = json.load(f)
+                    ruta = bloque["siguiente"]
+            else:
+                ruta = None
+
+        archivo_a_eliminar.estado_papelera = True
+        archivo_a_eliminar.fecha_eliminacion = datetime.now().isoformat()
+        self.archivos_logicos.remove(archivo_a_eliminar)
+        self.papelera.append(archivo_a_eliminar)
+
+        # Guardar en papelera.json
+        papelera_existente = []
+        if os.path.exists("papelera.json"):
+            with open("papelera.json", "r", encoding="utf-8") as archivo:
+                try:
+                    papelera_existente = json.load(archivo)
+                except json.JSONDecodeError:
+                    papelera_existente = []
+
+        papelera_existente.append(archivo_a_eliminar.convertir_a_diccionario())
+        with open("papelera.json", "w", encoding="utf-8") as archivo:
+            json.dump(papelera_existente, archivo, indent=4, ensure_ascii=False)
+        
+        # Actualizar la tabla FAT (eliminar el archivo de archivos activos)
+        self._guardar_tabla_fat()
+        
+    def recuperar_archivo(self, nombre):
+        archivo_a_recuperar = None
+        for a in self.papelera:
+            if a.nombre == nombre:
+                archivo_a_recuperar = a
+                break
+
+        if archivo_a_recuperar is None:
+            print(f"No se encontró el archivo '{nombre}' en la papelera.")
+            return
+
+        # Mover bloques de papelera_bloques a bloques/
+        ruta = archivo_a_recuperar.ruta
+        
+        #Actualizar la ruta para apuntar a papelera_bloques
+        if ruta and "papelera_bloques" not in ruta:
+            nombre_bloque_base = os.path.basename(ruta)
+            ruta = os.path.join("papelera_bloques", nombre_bloque_base)
+        
+        bloques_actualizados = []
+
+        while ruta:
+            if os.path.exists(ruta):
+                nombre_bloque = os.path.basename(ruta)
+                ruta_recuperada = os.path.join("bloques", nombre_bloque)
+                shutil.move(ruta, ruta_recuperada)  # mueve el bloque a la carpeta original
+                bloques_actualizados.append(ruta_recuperada)
+
+                # Leer siguiente bloque
+                with open(ruta_recuperada, "r", encoding="utf-8") as f:
+                    bloque = json.load(f)
+                    ruta = bloque["siguiente"]
+                    # CORRECIÓN: Actualizar también la siguiente ruta si es necesario
+                    if ruta and "papelera_bloques" not in ruta:
+                        nombre_bloque_siguiente = os.path.basename(ruta)
+                        ruta = os.path.join("papelera_bloques", nombre_bloque_siguiente)
+            else:
+                ruta = None
+
+        # Actualizar ruta inicial del archivo lógico
+        archivo_a_recuperar.ruta = bloques_actualizados[0] if bloques_actualizados else None
+        archivo_a_recuperar.estado_papelera = False
+        archivo_a_recuperar.fecha_eliminacion = ""
+
+        # Mover de la lista de papelera a archivos activos
+        self.papelera.remove(archivo_a_recuperar)
+        self.archivos_logicos.append(archivo_a_recuperar)
+
+        # Actualizar papelera.json
+        papelera_actual = []
+        if os.path.exists("papelera.json"):
+            with open("papelera.json", "r", encoding="utf-8") as archivo:
+                try:
+                    papelera_actual = json.load(archivo)
+                except json.JSONDecodeError:
+                    papelera_actual = []
+
+        papelera_actual = [p for p in papelera_actual if p["nombre"] != nombre]
+        with open("papelera.json", "w", encoding="utf-8") as archivo:
+            json.dump(papelera_actual, archivo, indent=4, ensure_ascii=False)
+
+        # Guardar la tabla FAT actualizada
+        self._guardar_tabla_fat()
+
+    def migrar_archivo_json(self):
         if os.path.exists("tablas_FAT.json"):
             with open("tablas_FAT.json", "r", encoding="utf-8") as archivo:
                 datos = json.load(archivo)
-                for d in datos:
-                    archivo_logico = ArchivoLogico(
-                        d["nombre"], d["ruta"], d["estado"], d["caracteres"],
-                        d["fecha de creacion"], d["fecha de modificacion"],
-                        d["fecha de eliminacion"], d["permisos"]
-                    )
-                    self.archivos_logicos.append(archivo_logico)
+            
+            # Actualizar las claves
+            for dato in datos:
+                if "fecha de modifiacion" in dato:
+                    dato["fecha_modificacion"] = dato.pop("fecha de modifiacion")
+                if "fecha de creacion" in dato:
+                    dato["fecha_creacion"] = dato.pop("fecha de creacion")
+                if "fecha de eliminacion" in dato:
+                    dato["fecha_eliminacion"] = dato.pop("fecha de eliminacion")
+                if "fecha de elminiacion" in dato:
+                    dato["fecha_eliminacion"] = dato.pop("fecha de elminiacion")
+            
+            # Guardar con las nuevas claves
+            with open("tablas_FAT.json", "w", encoding="utf-8") as archivo:
+                json.dump(datos, archivo, indent=4, ensure_ascii=False)
+
+
+
+        
 

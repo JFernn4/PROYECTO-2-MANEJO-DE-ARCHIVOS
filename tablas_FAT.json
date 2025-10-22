@@ -1,12 +1,12 @@
 [
     {
-        "nombre": "prueba.txt",
-        "ruta": "archivos/prueba.txt",
+        "nombre": "prueba1.txt",
+        "ruta": "bloques/prueba1.txt_bloque_1.json",
         "estado": false,
-        "caracteres": 0,
-        "fecha de creacion": "2025-10-19T20:03:06.444293",
-        "fecha de modifiacion": "2025-10-19T20:03:06.444310",
-        "fecha de elminiacion": "",
+        "caracteres": 87,
+        "fecha_creacion": "2025-10-22T00:00:58.176009",
+        "fecha_modificacion": "2025-10-22T00:00:58.176009",
+        "fecha_eliminacion": "",
         "permisos": [
             "lectura",
             "escritura"

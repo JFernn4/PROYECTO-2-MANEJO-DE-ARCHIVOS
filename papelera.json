@@ -1,0 +1,15 @@
+[
+    {
+        "nombre": "prueba2.txt",
+        "ruta": "papelera_bloques\\prueba2.txt_bloque_1.json",
+        "estado": true,
+        "caracteres": 32,
+        "fecha_creacion": "2025-10-22T00:02:44.516518",
+        "fecha_modificacion": "2025-10-22T00:02:44.516518",
+        "fecha_eliminacion": "2025-10-22T00:04:40.558575",
+        "permisos": [
+            "lectura",
+            "escritura"
+        ]
+    }
+]
