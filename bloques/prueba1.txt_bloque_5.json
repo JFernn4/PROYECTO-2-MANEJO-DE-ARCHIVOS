@@ -1,5 +1,5 @@
 {
-    "datos": "acteres",
-    "siguiente": null,
-    "eof": true
+    "datos": "or el administrador.",
+    "siguiente": "bloques/prueba1.txt_bloque_6.json",
+    "eof": false
 }

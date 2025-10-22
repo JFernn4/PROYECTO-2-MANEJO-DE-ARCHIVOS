@@ -19,7 +19,7 @@ tema = {
 class Aplicacion:
     def __init__(self, root):
         self.root = root
-        self.root.title("Aplicación con Login")
+        self.root.title("Simulación sistema de archivos FAT")
         self.root.geometry("1280x720")
         self.root.configure(bg=tema["fondo_principal"])
         
